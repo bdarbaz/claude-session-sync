@@ -22,16 +22,20 @@ function Stop-Sync {
 
 function Find-Python {
     # The "python" that ships with Windows may be a Store stub that opens the Store; skip it.
-    $candidates = @(@('py', '-3'), @('python'), @('python3'))
+    # No double quotes inside -c: Windows PowerShell 5.1 strips them from native arguments.
+    $candidates = @(
+        @{ Exe = 'py'; Pre = @('-3') },
+        @{ Exe = 'python'; Pre = @() },
+        @{ Exe = 'python3'; Pre = @() }
+    )
     foreach ($c in $candidates) {
-        $exe = $c[0]
-        $pre = @($c | Select-Object -Skip 1)
-        if (-not (Get-Command $exe -ErrorAction SilentlyContinue)) { continue }
+        if (-not (Get-Command $c.Exe -ErrorAction SilentlyContinue)) { continue }
+        $pre = $c.Pre
         try {
-            $out = & $exe @pre -c 'import sys; print(sys.executable if sys.version_info >= (3, 8) else "")' 2>$null
+            $out = & $c.Exe @pre -c 'import sys; print(sys.executable if sys.version_info >= (3, 8) else str())' 2>$null
         } catch { continue }
         if ($LASTEXITCODE -ne 0 -or -not $out) { continue }
-        $python = ($out | Select-Object -Last 1).Trim()
+        $python = ([string]($out | Select-Object -Last 1)).Trim()
         if ($python -and (Test-Path $python)) {
             $pythonw = Join-Path (Split-Path $python) 'pythonw.exe'
             if (Test-Path $pythonw) { return @{ Python = $python; Pythonw = $pythonw } }

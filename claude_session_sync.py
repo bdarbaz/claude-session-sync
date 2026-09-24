@@ -529,6 +529,13 @@ def main(argv=None):
     p.add_argument('--version', action='version', version='%(prog)s ' + VERSION)
     args = p.parse_args(argv)
     state_dir = os.path.abspath(os.path.expanduser(args.state_dir))
+    # Session titles can hold any character; a Windows console (cp1252 etc.) can't print them all.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, 'reconfigure'):
+            try:
+                stream.reconfigure(errors='replace')
+            except (ValueError, OSError):
+                pass
 
     if args.status:
         print_status(args, state_dir)
